@@ -10,7 +10,7 @@
      Comment:     
 						this class defines the window in which the project 
 						runs - its the outer windows that contain all of 
-						the widgets, including the "TrainView" which has the 
+						the widgets, including the "WaterView" which has the 
 						actual OpenGL window in which the train is drawn
 
 						You might want to modify this class to add new widgets
@@ -40,13 +40,18 @@
 #include "Track.H"
 
 // other things we just deal with as pointers, to avoid circular references
-class TrainView;
+class WaterView;
 
 // if we're also making the sample solution, then we need to know 
 // about the stuff we don't tell students
 #ifdef EXAMPLE_SOLUTION
 #include "TrainExample/TrainExample.H"
 #endif
+
+enum WaveType {
+	SineWave = 1,
+	HeightMap = 2,
+};
 
 class TrainWindow : public Fl_Double_Window {
 	public:
@@ -69,7 +74,7 @@ class TrainWindow : public Fl_Double_Window {
 		CTrack				m_Track;
 
 		// the widgets that make up the Window
-		TrainView*			trainView;
+		WaterView*			waterView;
 
 		Fl_Group*			widgets;	// all widgets, grouped for resizing ease
 
@@ -81,8 +86,6 @@ class TrainWindow : public Fl_Double_Window {
 		Fl_Button*			trainCam;
 		Fl_Button*			topCam;
 
-		// the type of the spline (use its value to determine)
-		Fl_Browser*			splineBrowser;
 
 		// are we animating the train?
 		Fl_Button*			runButton;
@@ -92,7 +95,12 @@ class TrainWindow : public Fl_Double_Window {
 
 		// we have other widgets as part of the sample solution
 		// this is not for 559 students to know about
-#ifdef EXAMPLE_SOLUTION
-	ExampleWidgets ew;
-#endif
+		Fl_Value_Slider* lightDistanceScale;
+		Fl_Value_Slider* lightPower;
+		Fl_Value_Slider* ambientLight;
+		Fl_Value_Slider* specularLight;
+
+		// the type of the wave (use its value to determine)
+		Fl_Browser* waveBrowser;
+
 };

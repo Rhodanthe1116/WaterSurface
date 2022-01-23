@@ -1,21 +1,21 @@
 /************************************************************************
-     File:        CallBacks.H
+	 File:        CallBacks.H
 
-     Author:     
-                  Michael Gleicher, gleicher@cs.wisc.edu
-     Modifier
-                  Yu-Chi Lai, yu-chi@cs.wisc.edu
-     
-     Comment:     Header file to define callback functions.
+	 Author:
+				  Michael Gleicher, gleicher@cs.wisc.edu
+	 Modifier
+				  Yu-Chi Lai, yu-chi@cs.wisc.edu
+
+	 Comment:     Header file to define callback functions.
 						define the callbacks for the TrainWindow
 
-						these are little functions that get called when the 
+						these are little functions that get called when the
 						various widgets
-						get accessed (or the fltk timer ticks). these 
-						functions are used 
+						get accessed (or the fltk timer ticks). these
+						functions are used
 						when TrainWindow sets itself up.
 
-     Platform:    Visio Studio.Net 2003/2005
+	 Platform:    Visio Studio.Net 2003/2005
 
 *************************************************************************/
 #pragma once
@@ -23,8 +23,11 @@
 #include <time.h>
 #include <math.h>
 
+#include <chrono>
+#include <ctime>    
+
 #include "TrainWindow.H"
-#include "TrainView.H"
+#include "WaterView.H"
 #include "CallBacks.H"
 
 #pragma warning(push)
@@ -42,7 +45,7 @@ void resetCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
 	tw->m_Track.resetPoints();
-	tw->trainView->selectedCube = -1;
+	tw->waterView->selectedCube = -1;
 	tw->m_Track.trainU = 0;
 	tw->damageMe();
 }
@@ -67,13 +70,13 @@ void addPointCB(Fl_Widget*, TrainWindow* tw)
 	// get the number of points
 	size_t npts = tw->m_Track.points.size();
 	// the number for the new point
-	size_t newidx = (tw->trainView->selectedCube>=0) ? tw->trainView->selectedCube : 0;
+	size_t newidx = (tw->waterView->selectedCube >= 0) ? tw->waterView->selectedCube : 0;
 
 	// pick a reasonable location
-	size_t previdx = (newidx + npts -1) % npts;
+	size_t previdx = (newidx + npts - 1) % npts;
 	Pnt3f npos = (tw->m_Track.points[previdx].pos + tw->m_Track.points[newidx].pos) * .5f;
 
-	tw->m_Track.points.insert(tw->m_Track.points.begin() + newidx,npos);
+	tw->m_Track.points.insert(tw->m_Track.points.begin() + newidx, npos);
 
 	// make it so that the train doesn't move - unless its affected by this control point
 	// it should stay between the same points
@@ -93,9 +96,10 @@ void deletePointCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
 	if (tw->m_Track.points.size() > 4) {
-		if (tw->trainView->selectedCube >= 0) {
-			tw->m_Track.points.erase(tw->m_Track.points.begin() + tw->trainView->selectedCube);
-		} else
+		if (tw->waterView->selectedCube >= 0) {
+			tw->m_Track.points.erase(tw->m_Track.points.begin() + tw->waterView->selectedCube);
+		}
+		else
 			tw->m_Track.points.pop_back();
 	}
 	tw->damageMe();
@@ -121,6 +125,7 @@ void backCB(Fl_Widget*, TrainWindow* tw)
 }
 
 
+auto start_time = std::chrono::system_clock::now();
 
 static unsigned long lastRedraw = 0;
 //***************************************************************************
@@ -135,8 +140,13 @@ void runButtonCB(TrainWindow* tw)
 //===========================================================================
 {
 	if (tw->runButton->value()) {	// only advance time if appropriate
-		if (clock() - lastRedraw > CLOCKS_PER_SEC/30) {
+		if (clock() - lastRedraw > CLOCKS_PER_SEC / 30) {
 			lastRedraw = clock();
+
+			/*std::chrono::duration<double> elapsed_seconds = std::chrono::system_clock::now() - start_time;
+			tw->waterView->cur_time = elapsed_seconds.count();
+			*/
+			tw->waterView->cur_time += 0.01;
 			tw->advanceTrain();
 			tw->damageMe();
 		}
@@ -150,8 +160,8 @@ void runButtonCB(TrainWindow* tw)
 void loadCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
-	const char* fname = 
-		fl_file_chooser("Pick a Track File","*.txt","TrackFiles/track.txt");
+	const char* fname =
+		fl_file_chooser("Pick a Track File", "*.txt", "TrackFiles/track.txt");
 	if (fname) {
 		tw->m_Track.readPoints(fname);
 		tw->damageMe();
@@ -164,8 +174,8 @@ void loadCB(Fl_Widget*, TrainWindow* tw)
 void saveCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
-	const char* fname = 
-		fl_input("File name for save (should be *.txt)","TrackFiles/");
+	const char* fname =
+		fl_input("File name for save (should be *.txt)", "TrackFiles/");
 	if (fname)
 		tw->m_Track.writePoints(fname);
 }
@@ -176,7 +186,7 @@ void saveCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 void rollx(TrainWindow* tw, float dir)
 {
-	int s = tw->trainView->selectedCube;
+	int s = tw->waterView->selectedCube;
 	if (s >= 0) {
 		Pnt3f old = tw->m_Track.points[s].orient;
 		float si = sin(((float)M_PI_4) * dir);
@@ -185,7 +195,7 @@ void rollx(TrainWindow* tw, float dir)
 		tw->m_Track.points[s].orient.z = si * old.y + co * old.z;
 	}
 	tw->damageMe();
-} 
+}
 
 //***************************************************************************
 //
@@ -194,7 +204,7 @@ void rollx(TrainWindow* tw, float dir)
 void rpxCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
-	rollx(tw,1);
+	rollx(tw, 1);
 }
 //***************************************************************************
 //
@@ -203,7 +213,7 @@ void rpxCB(Fl_Widget*, TrainWindow* tw)
 void rmxCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
-	rollx(tw,-1);
+	rollx(tw, -1);
 }
 
 //***************************************************************************
@@ -213,7 +223,7 @@ void rmxCB(Fl_Widget*, TrainWindow* tw)
 void rollz(TrainWindow* tw, float dir)
 //===========================================================================
 {
-	int s = tw->trainView->selectedCube;
+	int s = tw->waterView->selectedCube;
 	if (s >= 0) {
 
 		Pnt3f old = tw->m_Track.points[s].orient;
@@ -235,7 +245,7 @@ void rollz(TrainWindow* tw, float dir)
 void rpzCB(Fl_Widget*, TrainWindow* tw)
 //===========================================================================
 {
-	rollz(tw,1);
+	rollz(tw, 1);
 }
 
 //***************************************************************************

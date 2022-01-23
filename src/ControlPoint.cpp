@@ -73,7 +73,7 @@ void ControlPoint::
 draw()
 //============================================================================
 {
-	float size=2.0;
+	float size=0.2;
 
 	glPushMatrix();
 	glTranslatef(pos.x,pos.y,pos.z);
