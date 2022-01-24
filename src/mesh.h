@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef MESH_H
 #define MESH_H
 
@@ -8,41 +10,11 @@
 
 #include <string>
 #include <vector>
+
+#include "RenderUtilities/Texture.h"
+#include "RenderUtilities/Vertex.h"
+
 using namespace std;
-
-struct Vertex {
-	// position
-	glm::vec3 Position;
-	// normal
-	glm::vec3 Normal;
-	// texCoords
-	glm::vec2 TexCoords;
-	// tangent
-	glm::vec3 Tangent;
-	// bitangent
-	glm::vec3 Bitangent;
-};
-
-Vertex make_vertex(float x, float y, float z) {
-	Vertex v;
-	v.Position = glm::vec3(x, y, z);
-	return v;
-}
-
-class Texture {
-public:
-	unsigned int id;
-	string type;
-	string path;
-	GLenum target = GL_TEXTURE_2D;
-
-	void drawTo(function<void()> func) {
-		return;
-	}
-	void bind() {
-		return;
-	}
-};
 
 class Mesh {
 public:
@@ -63,6 +35,37 @@ public:
 		setupMesh();
 	}
 
+	static Mesh plane() {
+		//options = options || {};
+		vector<Vertex> vertices;
+		vector<unsigned int> indices;
+		vector<Texture> textures;
+		//Mesh mesh = new Mesh(options);
+		// detailX = options.detailX || options.detail || 1;
+		// detailY = options.detailY || options.detail || 1;
+		int detailX = 1;
+		int detailY = 1;
+
+		for (unsigned int y = 0; y <= detailY; y++) {
+			auto t = double(y) / double(detailY);
+			for (unsigned int x = 0; x <= detailX; x++) {
+				auto s = double(x) / double(detailX);
+				vertices.push_back(
+					make_vertex(2 * s - 1, 2 * t - 1, 0)
+				);
+				//if (mesh.coords) mesh.coords.push([s, t]);
+				//if (mesh.normals) mesh.normals.push([0, 0, 1]);
+				if (x < detailX && y < detailY) {
+					unsigned int i = x + y * (detailX + 1);
+					indices.insert(indices.end(), { i, i + 1, i + detailX + 1 });
+					indices.insert(indices.end(), { i + detailX + 1, i + 1, i + detailX + 2 });
+				}
+			}
+		}
+
+		return Mesh{ vertices , indices , textures };
+	}
+
 	// render the mesh
 	void Draw(Shader& shader)
 	{
@@ -78,7 +81,7 @@ public:
 			glActiveTexture(GL_TEXTURE0 + i); // active proper texture unit before binding
 			// retrieve texture number (the N in diffuse_textureN)
 			string number = "";
-			string name = textures[i].type;
+			string name = textures[i].name;
 			if (name == "texture_diffuse")
 				number = std::to_string(diffuseNr++);
 			else if (name == "texture_specular")
@@ -102,6 +105,35 @@ public:
 
 		// always good practice to set everything back to defaults once configured.
 		glActiveTexture(GL_TEXTURE0);
+	}
+
+	// render the mesh
+	void simpleDraw(Shader& shader)
+	{
+		// draw mesh
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+		// set the vertex attribute pointers
+		// vertex Positions
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+		// vertex normals
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+		// vertex texture coords
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+
+
+		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+
+		glBindVertexArray(0);
+
+		// always good practice to set everything back to defaults once configured.
+		//glActiveTexture(GL_TEXTURE0);
 	}
 
 private:
@@ -137,12 +169,12 @@ private:
 		// vertex texture coords
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
-		// vertex tangent
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
-		// vertex bitangent
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+		//// vertex tangent
+		//glEnableVertexAttribArray(3);
+		//glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+		//// vertex bitangent
+		//glEnableVertexAttribArray(4);
+		//glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
 
 		glBindVertexArray(0);
 	}

@@ -39,7 +39,11 @@
 #include "WaterView.H"
 #include "TrainWindow.H"
 #include "Utilities/3DUtils.H"
-#include "model.h"
+//#include "model.h"
+#include "water.h"
+
+GLuint Texture::framebuffer = NULL;
+GLuint Texture::renderbuffer = NULL;
 
 //************************************************************************
 //
@@ -97,6 +101,22 @@ int WaterView::handle(int event)
 		// if the left button be pushed is left mouse button
 		if (last_push == FL_LEFT_MOUSE) {
 			doPick();
+
+			/*glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glm::vec3 uv;
+			glReadPixels(Fl::event_x(), h() - Fl::event_y(), 1, 1, GL_RGB, GL_FLOAT, &uv[0]);
+
+			glReadBuffer(GL_NONE);
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+			if (uv.b != 1.0) {
+				cout << "drop : " << uv.x << ' ' << uv.y << endl;
+				water->addDrop(uv.x, uv.z, 0.3, 0.1);
+			}*/
+			water->addDrop(0, 0, 0.03, 0.01);
+
+
+
 			damage(1);
 			return 1;
 		};
@@ -270,7 +290,7 @@ unsigned int loadCubemap(vector<const GLchar*> faces)
 }
 
 
-Mesh* tiles_cube_mesh;
+Mesh* tiles_cube_mesh = nullptr;
 Texture tiles_cube_texture;
 void WaterView::initTiles() {
 	// Load model
@@ -335,7 +355,7 @@ void WaterView::initTiles() {
 		"images/tiles.jpg",
 	};
 	int texture_id = loadCubemap(faces);
-	Texture texture = { texture_id, "tiles_cube", "images/tiles.jpg", GL_TEXTURE_CUBE_MAP };
+	Texture texture{ texture_id, "tiles_cube", "images/tiles.jpg", GL_TEXTURE_CUBE_MAP };
 	textures.push_back(texture);
 
 	tiles_cube_mesh = new Mesh(vertices, indices, textures);
@@ -363,12 +383,17 @@ void WaterView::drawTiles(glm::mat4 V, glm::mat4 P) {
 	glUniformMatrix4fv(glGetUniformLocation(this->tiles_shader->Program, "M"), 1, GL_FALSE, &M[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(this->tiles_shader->Program, "V"), 1, GL_FALSE, &V[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(this->tiles_shader->Program, "P"), 1, GL_FALSE, &P[0][0]);
-	tiles_cube_mesh->Draw(*this->tiles_shader);
+
+	//tiles_cube_texture.bind(0);
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(tiles_cube_texture.target, tiles_cube_texture.id);
+	glUniform1i(glGetUniformLocation(this->tiles_shader->Program, (tiles_cube_texture.name).c_str()), 0);
+	tiles_cube_mesh->simpleDraw(*this->tiles_shader);
 
 	glDisable(GL_CULL_FACE);
 }
 
-Mesh* sky_mesh;
+Mesh* sky_mesh = nullptr;
 Texture skybox_texture;
 void WaterView::initSkybox() {
 	// Load model
@@ -439,20 +464,8 @@ void WaterView::initSkybox() {
 		"images/skybox/front.jpg",
 	};
 	int skybox_texture_id = loadCubemap(faces);
-	Texture texture = { skybox_texture_id, "skybox_cube", "images/skybox", GL_TEXTURE_CUBE_MAP };
+	Texture texture{ skybox_texture_id, "skybox_cube", "images/skybox", GL_TEXTURE_CUBE_MAP };
 	textures.push_back(texture);
-
-
-	// prepare VAO, VBO, EBO
-	/*GLuint skyboxVAO, skyboxVBO;
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);*/
-
 
 	sky_mesh = new Mesh(vertices, indices, textures);
 
@@ -532,7 +545,61 @@ void WaterView::drawWater(glm::mat4 V, glm::mat4 P) {
 		specularLight
 	);
 
-	wave->Draw(*this->shader, WaveType(tw->waveBrowser->value()), this->cur_time);
+	//glActiveTexture(GL_TEXTURE0 + 0);
+	//glBindTexture(this->water->textureA.target, this->water->textureA.id);
+	//glUniform1i(glGetUniformLocation(this->shader->Program, "texture_diffuse1"), 0);
+
+
+
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glUniform1i(glGetUniformLocation(this->shader->Program, "skybox_cube"), 0);
+	glBindTexture(skybox_texture.target, skybox_texture.id);
+	glActiveTexture(GL_TEXTURE0 + 1);
+	glUniform1i(glGetUniformLocation(this->shader->Program, "tiles_cube"), 1);
+	glBindTexture(tiles_cube_texture.target, tiles_cube_texture.id);
+	glActiveTexture(GL_TEXTURE0 + 2);
+	glUniform1i(glGetUniformLocation(this->shader->Program, "causticTex"), 2);
+	glBindTexture(GL_TEXTURE_2D, wave->height_maps[cur_frame]);
+
+	if (tw->waveBrowser->value() == WaveType::SineWave) {
+		// sinewave attr
+	}
+	else if (tw->waveBrowser->value() == WaveType::HeightMap) {
+		//glActiveTexture(GL_TEXTURE0 + 3);
+		//glUniform1i(glGetUniformLocation(this->shader->Program, "water"), 3);
+		//glBindTexture(GL_TEXTURE_2D, wave->height_maps[cur_frame]);
+
+
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glBindTexture(GL_TEXTURE_2D, water->textureA.id);
+		glUniform1i(glGetUniformLocation(this->shader->Program, "water"), 3);
+	}
+	wave->simpleDraw(*this->shader);
+
+	cur_frame += 1;
+	cur_frame %= frame_size;
+
+	//wave->Draw(*this->shader, WaveType(tw->waveBrowser->value()), this->cur_time);
+	//water->plane.Draw(*this->shader, WaveType(tw->waveBrowser->value()), this->cur_time);
+
+
+
+
+
+
+	water->textureA.bind(0);
+	this->simple_shader->Use();
+	glUniform1i(glGetUniformLocation(this->simple_shader->Program, "water"), 0);
+	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "M"), 1, GL_FALSE, &wave_model[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "V"), 1, GL_FALSE, &V[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "P"), 1, GL_FALSE, &P[0][0]);
+	water->plane.simpleDraw(*this->simple_shader);
+
+	//water->dropShader->Use();
+	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "M"), 1, GL_FALSE, &wave_model[0][0]);
+	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "V"), 1, GL_FALSE, &V[0][0]);
+	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "P"), 1, GL_FALSE, &P[0][0]);
+	//water->plane.simpleDraw(*water->dropShader);
 
 }
 
@@ -546,8 +613,9 @@ void WaterView::updateCommon() {
 	// we need to clear out the stencil buffer since we'll use
 	// it for shadows
 	glClearStencil(0);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	glEnable(GL_DEPTH);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
 
 	// Blayne prefers GL_DIFFUSE
 	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
@@ -565,7 +633,7 @@ void WaterView::updateCommon() {
 	// enable the lighting
 	glEnable(GL_COLOR_MATERIAL);
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_LIGHTING);
+	//glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 
 	//glDisable(GL_CULL_FACE);
@@ -581,7 +649,6 @@ void WaterView::updateCommon() {
 		glEnable(GL_LIGHT1);
 		glEnable(GL_LIGHT2);
 	}
-
 	//*********************************************************************
 	//
 	// * set the light parameters
@@ -615,7 +682,7 @@ void WaterView::updateCommon() {
 	// now draw the object and we need to do it twice
 	// once for real, and then once for shadows
 	//*********************************************************************
-	glEnable(GL_LIGHTING);
+	//glEnable(GL_LIGHTING);
 	setupObjects();
 
 	drawStuff();
@@ -628,13 +695,79 @@ void WaterView::updateCommon() {
 	}
 }
 
+
+void WaterView::update(double seconds) {
+	glDisable(GL_DEPTH_TEST);
+
+	// Update the water simulation and graphics
+	if (!this->water) {
+		cout << "error" << endl;
+		return;
+	}
+
+	this->water->stepSimulation();
+	this->water->stepSimulation();
+	//this->water->stepSimulation();
+	this->water->updateNormals();
+	// renderer.updateCaustics(water);
+}
+
+
+void WaterView::realDraw()
+{
+	updateCommon();
+	// Prepare common matrix
+	glm::mat4 projection;
+	glm::mat4 view;
+	glGetFloatv(GL_PROJECTION_MATRIX, &projection[0][0]);
+	glGetFloatv(GL_MODELVIEW_MATRIX, &view[0][0]);
+	// Draw skybox
+	// remove translation
+	glm::mat4 skybox_view = glm::mat4(glm::mat3(view));
+	drawSkybox(
+		skybox_view,
+		projection
+	);
+
+	// Draw tiles
+	drawTiles(
+		view,
+		projection
+	);
+
+	drawWater(
+		view,
+		projection
+	);
+
+	//unbind shader(switch to fixed pipeline)
+	glUseProgram(0);
+
+}
+void GLAPIENTRY
+MessageCallback(GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam)
+{
+	fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+		(type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+		type, severity, message);
+}
+
+bool is_init = false;
+
+// animate
 //************************************************************************
 //
 // * this is the code that actually draws the window
 //   it puts a lot of the work into other routines to simplify things
 //========================================================================
-void WaterView::draw()
-{
+void WaterView::draw() {
+
 	//*********************************************************************
 	//
 	// * Set up basic opengl informaiton
@@ -643,17 +776,31 @@ void WaterView::draw()
 	//initialized glad
 	if (gladLoadGL())
 	{
-		//initiailize VAO, VBO, Shader...
-		this->sinewave_shader = new
-			Shader(
-				PROJECT_DIR "/src/shaders/sinewave.vert",
-				nullptr, nullptr, nullptr,
-				PROJECT_DIR "/src/shaders/sinewave.frag");
-		this->height_map_shader = new
-			Shader(
-				PROJECT_DIR "/src/shaders/height_map.vert",
-				nullptr, nullptr, nullptr,
-				PROJECT_DIR "/src/shaders/sinewave.frag");
+
+		if (!is_init) {
+			is_init = true;
+			
+			// During init, enable debug output
+			glEnable(GL_DEBUG_OUTPUT);
+			glDebugMessageCallback(MessageCallback, 0);
+
+			//initiailize VAO, VBO, Shader...
+			this->simple_shader = new
+				Shader(
+					PROJECT_DIR "/src/shaders/simple.vert",
+					nullptr, nullptr, nullptr,
+					PROJECT_DIR "/src/shaders/simple.frag");
+			this->sinewave_shader = new
+				Shader(
+					PROJECT_DIR "/src/shaders/sinewave.vert",
+					nullptr, nullptr, nullptr,
+					PROJECT_DIR "/src/shaders/sinewave.frag");
+			this->height_map_shader = new
+				Shader(
+					PROJECT_DIR "/src/shaders/water.vert",
+					nullptr, nullptr, nullptr,
+					PROJECT_DIR "/src/shaders/sinewave.frag");
+		}
 
 
 		if (!this->skybox_shader) {
@@ -685,7 +832,6 @@ void WaterView::draw()
 			wave->add_height_map_textures("assets/images/height_map");
 
 			wave->meshes[0].textures.push_back(skybox_texture);
-			wave->height_map_meshes[0].textures.push_back(skybox_texture);
 
 			cout << "wave model loaded" << endl;
 		}
@@ -693,49 +839,27 @@ void WaterView::draw()
 		if (!this->device) {
 			prepareDevice();
 		}
+
+		if (!this->water) {
+			this->water = new Water();
+
+			if (!water->textureA.canDrawTo() || !water->textureB.canDrawTo()) {
+				throw exception("Rendering to floating-point textures is required but not supported");
+			}
+		}
 	}
 	else
 		throw std::runtime_error("Could not initialize GLAD!");
 
-	updateCommon();
 
-	// Prepare common matrix
-	glm::mat4 projection;
-	glm::mat4 view;
-	glGetFloatv(GL_PROJECTION_MATRIX, &projection[0][0]);
-	glGetFloatv(GL_MODELVIEW_MATRIX, &view[0][0]);
 
-	// Draw skybox
-	// remove translation
-	glm::mat4 skybox_view = glm::mat4(glm::mat3(view));
-	drawSkybox(
-		skybox_view,
-		projection
-	);
-
-	// Draw tiles
-	drawTiles(
-		view,
-		projection
-	);
-
-	drawWater(
-		view,
-		projection
-	);
-
-	// //bind VAO
-	// glBindVertexArray(this->plane->vao);
-	// 
-	// glDrawElements(GL_TRIANGLES, this->plane->element_amount, GL_UNSIGNED_INT, 0);
-	// 
-	// //unbind VAO
-	// glBindVertexArray(0);
-
-	//unbind shader(switch to fixed pipeline)
-	glUseProgram(0);
-
+	//var nextTime = new Date().getTime();
+	//update((nextTime - prevTime) / 1000);
+	realDraw();
+	update(1);
+	//prevTime = nextTime;
 }
+
 
 //************************************************************************
 //
@@ -782,7 +906,7 @@ setProjection()
 #ifdef EXAMPLE_SOLUTION
 		trainCamView(this, aspect);
 #endif
-	}
+}
 }
 
 //************************************************************************
@@ -901,83 +1025,3 @@ doPick()
 	printf("Selected Cube %d\n", selectedCube);
 }
 
-void WaterView::setUBO()
-{
-	float wdt = this->pixel_w();
-	float hgt = this->pixel_h();
-
-	glm::mat4 view_matrix;
-	glGetFloatv(GL_MODELVIEW_MATRIX, &view_matrix[0][0]);
-	//HMatrix view_matrix; 
-	//this->arcball.getMatrix(view_matrix);
-
-	glm::mat4 projection_matrix;
-	glGetFloatv(GL_PROJECTION_MATRIX, &projection_matrix[0][0]);
-	//projection_matrix = glm::perspective(glm::radians(this->arcball.getFoV()), (GLfloat)wdt / (GLfloat)hgt, 0.01f, 1000.0f);
-
-	glBindBuffer(GL_UNIFORM_BUFFER, this->commom_matrices->ubo);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &projection_matrix[0][0]);
-	glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), &view_matrix[0][0]);
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-}
-
-
-void WaterView::preparePlane() {
-	/*GLfloat  vertices[] = {
-				-0.5f ,0.0f , -0.5f,
-				-0.5f ,0.0f , 0.5f ,
-				0.5f ,0.0f ,0.5f ,
-				0.5f ,0.0f ,-0.5f };*/
-	const int precision = 1000;
-	GLfloat  vertices[precision];
-
-	for (int i = 0; i < precision; i++) {
-		vertices[i] = float(precision) / i;
-	}
-	GLfloat  normal[] = {
-		0.0f, 1.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		0.0f, 1.0f, 0.0f };
-	GLfloat  texture_coordinate[] = {
-		0.0f, 0.0f,
-		1.0f, 0.0f,
-		1.0f, 1.0f,
-		0.0f, 1.0f };
-	GLuint element[] = {
-		0, 1, 2,
-		0, 2, 3, };
-
-	this->plane = new VAO;
-	this->plane->element_amount = sizeof(element) / sizeof(GLuint);
-	glGenVertexArrays(1, &this->plane->vao);
-	glGenBuffers(3, this->plane->vbo);
-	glGenBuffers(1, &this->plane->ebo);
-
-	glBindVertexArray(this->plane->vao);
-
-	// Position attribute
-	glBindBuffer(GL_ARRAY_BUFFER, this->plane->vbo[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	// Normal attribute
-	glBindBuffer(GL_ARRAY_BUFFER, this->plane->vbo[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(normal), normal, GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(1);
-
-	// Texture Coordinate attribute
-	glBindBuffer(GL_ARRAY_BUFFER, this->plane->vbo[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(texture_coordinate), texture_coordinate, GL_STATIC_DRAW);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(2);
-
-	//Element attribute
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->plane->ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(element), element, GL_STATIC_DRAW);
-
-	// Unbind VAO
-	glBindVertexArray(0);
-}

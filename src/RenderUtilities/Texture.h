@@ -1,50 +1,73 @@
 #pragma once
-#include <opencv2\opencv.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <glad/glad.h>
+
+#include <glad/glad.h> // holds all OpenGL type declarations
+
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <string>
+#include <vector>
+#include <functional>
+
+using namespace std;
 
 
-class Texture2D
-{
+
+class Texture {
 public:
-	enum Type {
-		TEXTURE_DEFAULT = 0,
-		TEXTURE_DIFFUSE, TEXTURE_SPECULAR,
-		TEXTURE_NORMAL, TEXTURE_DISPLACEMENT,
-		TEXTURE_HEIGHT,
-	};
+	static GLuint framebuffer;
+	static GLuint renderbuffer;
 
-	Type type;
+	unsigned int id;
+	unsigned int width;
+	unsigned int height;
+	string name;
+	GLenum type = GL_UNSIGNED_BYTE;
+	GLint format;
+	string path;
+	GLenum target = GL_TEXTURE_2D;
 
-	Texture2D(const char* path, Type texture_type = Texture2D::TEXTURE_DEFAULT):
-		type(texture_type)
-	{
-		cv::Mat img;
-		//cv::imread(path, cv::IMREAD_COLOR).convertTo(img, CV_32FC3, 1 / 255.0f);	//unsigned char to float
-		img = cv::imread(path, cv::IMREAD_COLOR);
+	bool init = false;
 
-		this->size.x = img.cols;
-		this->size.y = img.rows;
+	Texture() {
+	}
 
-		//cv::cvtColor(img, img, CV_BGR2RGB);
+	Texture(int id, string name, string path, GLenum target) {
+		this->id = id;
+		this->name = name;
+		this->path = path;
+		this->target = target;
+	}
 
+	Texture(int width, int height, GLenum type = GL_UNSIGNED_BYTE) {
 		glGenTextures(1, &this->id);
+		this->width = width;
+		this->height = height;
+		// this->format = options.format || gl.RGBA;
+		this->format = GL_RGBA;
+		// this->type = options.type || gl.UNSIGNED_BYTE;
+		this->type = type;
+		this->target = target;
+		// var magFilter = options.filter || options.magFilter || gl.LINEAR;
+		// var minFilter = options.filter || options.minFilter || gl.LINEAR;
 
 		glBindTexture(GL_TEXTURE_2D, this->id);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		// glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		if(img.type() == CV_8UC3)
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, img.cols, img.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, img.data);
-		else if (img.type() == CV_8UC4)
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, img.cols, img.rows, 0, GL_BGRA, GL_UNSIGNED_BYTE, img.data);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		img.release();
+	    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexImage2D(GL_TEXTURE_2D, 0, this->format, width, height, 0, this->format, this->type, NULL);
+	
+		
 	}
+
+
 	void bind(GLenum bind_unit)
 	{
 		glActiveTexture(GL_TEXTURE0 + bind_unit);
@@ -55,8 +78,66 @@ public:
 		glActiveTexture(GL_TEXTURE0 + bind_unit);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
-	glm::ivec2 size;
-private:
-	GLuint id;
 
+	bool canDrawTo() {
+		if (!framebuffer) {
+			glGenFramebuffers(1, &framebuffer);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->id, 0);
+		auto result = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+		return result;
+	}
+
+	void drawTo(function<void()> callback) {
+
+		int v[4];
+		glGetIntegerv(GL_VIEWPORT, v);
+
+		if (!framebuffer) {
+			glGenFramebuffers(1, &framebuffer);
+		}
+		if (!renderbuffer) {
+			glGenRenderbuffers(1, &renderbuffer);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+		glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
+
+		if (!init) {
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, this->width, this->height);
+			init = true;
+		}
+		//if (this->width != renderbuffer.width || this->height != renderbuffer.height) {
+		//	renderbuffer.width = this->width;
+		//	renderbuffer.height = this->height;
+			//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, this->width, this->height);
+		//}
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->id, 0);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderbuffer);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+			throw exception("Rendering to this texture is not supported (incomplete framebuffer)");
+		}
+		glViewport(0, 0, this->width, this->height);
+
+		callback();
+
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glViewport(v[0], v[1], v[2], v[3]);
+
+	}
+
+	void swapWith(Texture& other) {
+		int temp;
+		temp = other.id; other.id = this->id; this->id = temp;
+		temp = other.width; other.width = this->width; this->width = temp;
+		temp = other.height; other.height = this->height; this->height = temp;
+		//string tmp;
+		//tmp = other.type; other.type = this->type; this->type = tmp;
+		//GLenum tmp2;
+		//tmp2 = other.target; other.target = this->target; this->target = tmp2;
+	}
 };
+
+

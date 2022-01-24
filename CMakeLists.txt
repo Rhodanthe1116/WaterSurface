@@ -6,6 +6,9 @@ set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/)
 set(LIB_DIR ${PROJECT_SOURCE_DIR}/lib/)
 
 set(SRC_SHADER 
+    ${SRC_DIR}shaders/simple.vert
+    ${SRC_DIR}shaders/simple.frag
+
     ${SRC_DIR}shaders/sinewave.vert
     ${SRC_DIR}shaders/sinewave.frag
     ${SRC_DIR}shaders/height_map.frag
@@ -15,13 +18,19 @@ set(SRC_SHADER
     ${SRC_DIR}shaders/tiles.vert
     ${SRC_DIR}shaders/tiles.frag
 
+    ${SRC_DIR}shaders/vertex.vert
+    ${SRC_DIR}shaders/drop.frag
     ${SRC_DIR}shaders/update.frag
+    ${SRC_DIR}shaders/normal.frag
+    ${SRC_DIR}shaders/water.vert
 )
 
 set(SRC_RENDER_UTILITIES
     ${SRC_DIR}RenderUtilities/BufferObject.h
     ${SRC_DIR}RenderUtilities/Shader.h
-    ${SRC_DIR}RenderUtilities/Texture.h)
+    ${SRC_DIR}RenderUtilities/Texture.h
+    ${SRC_DIR}RenderUtilities/Vertex.h
+)
 
 include_directories(${INCLUDE_DIR})
 include_directories(${INCLUDE_DIR}glad4.6/include/)
@@ -34,8 +43,6 @@ add_executable(WaterSurface
     ${SRC_DIR}mesh.h
     ${SRC_DIR}model.h
     ${SRC_DIR}water.h
-    ${SRC_DIR}SimpleMesh.h
-    ${SRC_DIR}SimpleModel.h
 
     ${SRC_DIR}CallBacks.h
     ${SRC_DIR}ControlPoint.h
@@ -56,6 +63,7 @@ add_executable(WaterSurface
 
     ${INCLUDE_DIR}glad4.6/src/glad.c
     ${INCLUDE_DIR}stb_image.h
+
 )
 source_group("shaders" FILES ${SRC_SHADER})
 source_group("RenderUtilities" FILES ${SRC_RENDER_UTILITIES})

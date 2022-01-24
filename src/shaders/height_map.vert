@@ -12,7 +12,7 @@ uniform mat4 V;
 uniform mat4 P;
 uniform vec3 LightPosition_worldspace;
 
-uniform sampler2D texture_diffuse1;
+uniform sampler2D height_map;
 
 // sinewave
 uniform float amplitude, wavelength, time, speed, interactive_amplitude,
@@ -64,7 +64,7 @@ float AMPLITUDE = 0.15;
 float HEIGHT_MAP_Y_OFFSET = 0.5;
 float AMPLITUDE_BASE = 3;
 float get_height_of_uv_with_offset(ivec2 off) {
-    return (textureOffset(texture_diffuse1, vertexUV, off).r - HEIGHT_MAP_Y_OFFSET) * AMPLITUDE * AMPLITUDE_BASE;
+    return (textureOffset(height_map, vertexUV, off).r - HEIGHT_MAP_Y_OFFSET) * AMPLITUDE * AMPLITUDE_BASE;
     // return texture(texture_diffuse1, vertexUV).r - height_map_height_offset;
 }
 
@@ -118,7 +118,7 @@ void main() {
         vertexPosition_modelspace.z
     );
 
-    vec3 new_vertexNormal_modelspace = cal_vertexNormal_modelspace(texture_diffuse1);
+    vec3 new_vertexNormal_modelspace = cal_vertexNormal_modelspace(height_map);
  
     commonOutput(
         new_vertexPosition_modelspace, 

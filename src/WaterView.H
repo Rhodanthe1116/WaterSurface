@@ -32,6 +32,7 @@
 
 // Preclarify for preventing the compiler error
 class TrainWindow;
+class Water;
 class CTrack;
 
 
@@ -76,6 +77,8 @@ public:
 	void drawSkybox(glm::mat4, glm::mat4);
 	void drawWater(glm::mat4 V, glm::mat4 P);
 	void updateCommon();
+	void update(double seconds);
+	void realDraw();
 	virtual void draw();
 
 	// all of the actual drawing happens in this routine
@@ -102,13 +105,11 @@ public:
 	TrainWindow* tw;				// The parent of this display window
 	CTrack* m_pTrack;		// The track of the entire scene
 
+	Water* water = nullptr;
 	Shader* shader = nullptr;
+	Shader* simple_shader = nullptr;
 	Shader* sinewave_shader = nullptr;
 	Shader* height_map_shader = nullptr;
-	Texture2D* texture = nullptr;
-	VAO* plane = nullptr;
-	UBO* commom_matrices = nullptr;
-
 	Shader* skybox_shader = nullptr;
 	Shader* tiles_shader = nullptr;
 	unsigned int skybox_texture_id;
@@ -122,7 +123,10 @@ public:
 	ALuint source;
 	ALuint buffer;
 
+	int frame_size = 200;
+	int cur_frame = 0;
 	float cur_time = 0;
+
 
 
 };

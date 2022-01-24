@@ -192,7 +192,7 @@ void setupObjects(void)
 void setupShadows(void)
 //===============================================================================
 {
-	glDisable(GL_LIGHTING);
+	//glDisable(GL_LIGHTING);
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -377,10 +377,10 @@ void restoreLighting()
 //===============================================================================
 {
 	if (!lightStateStack.empty()) {
-		if ((lightStateStack.end()-1)->lighting)
-			glEnable(GL_LIGHTING);
-		else
-			glDisable(GL_LIGHTING);
+		//if ((lightStateStack.end()-1)->lighting)
+			//glEnable(GL_LIGHTING);
+		//else
+			//glDisable(GL_LIGHTING);
 
 		if ((lightStateStack.end()-1)->smooth)
 			glShadeModel(GL_SMOOTH);

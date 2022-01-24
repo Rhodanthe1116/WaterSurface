@@ -1,5 +1,4 @@
 #version 430 core
-#extension GL_NV_shadow_samplers_cube : enable
 // not use
 
 in V_OUT {

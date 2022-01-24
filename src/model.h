@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef MODEL_H
 #define MODEL_H
 
@@ -11,8 +13,6 @@
 #include "assimp/postprocess.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-#include "mesh.h"
-#include "RenderUtilities/Shader.h"
 
 #include <string>
 #include <fstream>
@@ -20,6 +20,11 @@
 #include <iostream>
 #include <map>
 #include <vector>
+
+
+#include "mesh.h"
+#include "RenderUtilities/Shader.h"
+
 using namespace std;
 
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
@@ -30,10 +35,8 @@ public:
 	// model data 
 	vector<Texture> textures_loaded;	// stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
 	vector<Mesh>    meshes;
-	vector<Mesh>    height_map_meshes;
 	vector<unsigned int> height_maps;
-	int frame_size = 200;
-	int cur_frame = 0;
+
 	string directory;
 	bool gammaCorrection;
 	// constructor, expects a filepath to a 3D model.
@@ -43,21 +46,21 @@ public:
 	}
 
 	// draws the model, and thus all its meshes
-	void Draw(Shader& shader, WaveType wave_type, float cur_time)
+	void Draw(Shader& shader, int wave_type, float cur_time)
 	{
-		if (wave_type == WaveType::HeightMap) {
-			for (unsigned int i = 0; i < height_map_meshes.size(); i++) {
+		if (wave_type == 2) {
+			for (unsigned int i = 0; i < meshes.size(); i++) {
 				// Actually, there is only one mesh (meshes.size() == 1).
-				Mesh* cur_mesh = &height_map_meshes[i];
+				Mesh* cur_mesh = &meshes[i];
 
-				int cur_height_map_index = cur_frame;
+				int cur_height_map_index = 0;
 
 				for (auto& cur_texture : cur_mesh->textures) {
 					cur_texture.id = height_maps[cur_height_map_index];
 					//cout << "cur_texture.id" << height_maps[cur_height_map_index] << endl;
 				}
 
-				const int CAUSTIC_TEXTURE_INDEX = cur_height_map_index+1;
+				const int CAUSTIC_TEXTURE_INDEX = cur_height_map_index + 1;
 				glActiveTexture(GL_TEXTURE0 + CAUSTIC_TEXTURE_INDEX);
 				glUniform1i(glGetUniformLocation(shader.Program, "causticTex"), height_maps[cur_height_map_index]);
 				glBindTexture(GL_TEXTURE_2D, height_maps[cur_height_map_index]);
@@ -73,7 +76,8 @@ public:
 			}
 			glActiveTexture(GL_TEXTURE0);
 		}
-		else if (wave_type == WaveType::SineWave) {
+		// else if (wave_type == WaveType::SineWave) {
+		else {
 			for (unsigned int i = 0; i < meshes.size(); i++) {
 				// Actually, there is only one mesh (meshes.size() == 1).
 				// cout << "mesh " << i << endl;
@@ -81,10 +85,22 @@ public:
 			}
 		}
 
-		cur_frame += 1;
-		cur_frame %= frame_size;
 
 	}
+
+	// draws the model, and thus all its meshes
+	void simpleDraw(Shader& shader)
+	{
+		
+		for (unsigned int i = 0; i < meshes.size(); i++) {
+			// Actually, there is only one mesh (meshes.size() == 1).
+			// cout << "mesh " << i << endl;
+			meshes[i].simpleDraw(shader);
+		}
+
+	}
+
+
 	void add_height_map_texture(const char* _path, const string& _directory) {
 		height_maps.push_back(TextureFromFile(_path, _directory));
 	}
@@ -99,7 +115,6 @@ public:
 			}
 			this->add_height_map_texture((num + ".png").c_str(), _directory);
 		}
-		frame_size = height_maps.size();
 	}
 private:
 	// loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
@@ -132,7 +147,6 @@ private:
 			aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 			Mesh tmp = processMesh(mesh, scene);
 			meshes.push_back(tmp);
-			height_map_meshes.push_back(tmp);
 		}
 		// after we've processed all of the meshes (if any) we then recursively process each of the children nodes
 		for (unsigned int i = 0; i < node->mNumChildren; i++)
@@ -250,7 +264,7 @@ private:
 			{   // if texture hasn't been loaded already, load it
 				Texture texture;
 				texture.id = TextureFromFile(str.C_Str(), this->directory);
-				texture.type = typeName;
+				texture.name = typeName;
 				texture.path = str.C_Str();
 				textures.push_back(texture);
 				textures_loaded.push_back(texture);  // store it as texture loaded for entire model, to ensure we won't unnecesery load duplicate textures.
@@ -282,6 +296,7 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
 			format = GL_RGBA;
 
 		glBindTexture(GL_TEXTURE_2D, textureID);
+		//cout << path << " " << width << " " << height << endl;
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 

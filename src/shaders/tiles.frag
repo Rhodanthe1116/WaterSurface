@@ -7,11 +7,10 @@ f_in;
 in vec3 TexCoords;
 out vec4 color;
 
-uniform vec3 LightPosition_worldspace;
-
-uniform samplerCube skybox_cube;
 uniform samplerCube tiles_cube;
 uniform sampler2D causticTex;
+uniform vec3 LightPosition_worldspace;
+
 
 const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);
 const float poolHeight = 1.0;

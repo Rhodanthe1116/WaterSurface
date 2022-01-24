@@ -1,6 +1,10 @@
+#version 430 core
 uniform sampler2D water;
 uniform vec2 delta;
-varying vec2 coord;
+
+in vec2 coord;
+out vec4 color;
+
 void main() {
     // The data in the texture is (position.y, velocity.y, normal.x, normal.z)
     /* get vertex info */
@@ -24,6 +28,6 @@ void main() {
       
     /* move the vertex along the velocity */
     info.r += info.g;
-      
+     
     gl_FragColor = info;
 }

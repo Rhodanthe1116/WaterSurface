@@ -1,5 +1,4 @@
 #version 430 core
-#extension GL_NV_shadow_samplers_cube : enable
 
 in V_OUT {
    vec3 Position_worldspace;
@@ -22,10 +21,6 @@ uniform vec3 specularLight;
 // Light emission properties
 vec3 LightColor = vec3(1, 1, 1);
 
-uniform sampler2D texture_diffuse1;
-uniform sampler2D texture_specular1;
-uniform sampler2D texture_normal1;
-uniform sampler2D texture_height1;
 uniform samplerCube skybox_cube;
 uniform samplerCube tiles_cube;
 uniform sampler2D causticTex;
