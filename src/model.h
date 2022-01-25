@@ -46,14 +46,14 @@ public:
 	}
 
 	// draws the model, and thus all its meshes
-	void Draw(Shader& shader, int wave_type, float cur_time)
+	void Draw(Shader& shader, int wave_type, float cur_frame)
 	{
 		if (wave_type == 2) {
 			for (unsigned int i = 0; i < meshes.size(); i++) {
 				// Actually, there is only one mesh (meshes.size() == 1).
 				Mesh* cur_mesh = &meshes[i];
 
-				int cur_height_map_index = 0;
+				int cur_height_map_index = cur_frame;
 
 				for (auto& cur_texture : cur_mesh->textures) {
 					cur_texture.id = height_maps[cur_height_map_index];

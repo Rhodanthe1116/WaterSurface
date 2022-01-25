@@ -50,7 +50,7 @@ resetPoints()
 
 	points.clear();
 	//points.push_back(ControlPoint(Pnt3f(10000, 10000, 0)));
-	points.push_back(ControlPoint(Pnt3f(1,5,-5)));
+	points.push_back(ControlPoint(Pnt3f(1,5,-2)));
 
 	// we had better put the train back at the start of the track...
 	trainU = 0.0;

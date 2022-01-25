@@ -51,6 +51,7 @@ class WaterView;
 enum WaveType {
 	SineWave = 1,
 	HeightMap = 2,
+	Simulation = 3,
 };
 
 class TrainWindow : public Fl_Double_Window {

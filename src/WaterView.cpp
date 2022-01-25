@@ -102,18 +102,7 @@ int WaterView::handle(int event)
 		if (last_push == FL_LEFT_MOUSE) {
 			doPick();
 
-			/*glReadBuffer(GL_COLOR_ATTACHMENT0);
-			glm::vec3 uv;
-			glReadPixels(Fl::event_x(), h() - Fl::event_y(), 1, 1, GL_RGB, GL_FLOAT, &uv[0]);
-
-			glReadBuffer(GL_NONE);
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-
-			if (uv.b != 1.0) {
-				cout << "drop : " << uv.x << ' ' << uv.y << endl;
-				water->addDrop(uv.x, uv.z, 0.3, 0.1);
-			}*/
-			water->addDrop(0, 0, 0.03, 0.01);
+			water->addDrop(0, 0, 0.3, 0.3);
 
 
 
@@ -388,6 +377,25 @@ void WaterView::drawTiles(glm::mat4 V, glm::mat4 P) {
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(tiles_cube_texture.target, tiles_cube_texture.id);
 	glUniform1i(glGetUniformLocation(this->tiles_shader->Program, (tiles_cube_texture.name).c_str()), 0);
+
+
+	if (tw->waveBrowser->value() == WaveType::SineWave) {
+		water->textureA.bind(2);
+	}
+	else if (tw->waveBrowser->value() == WaveType::HeightMap) {
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glBindTexture(GL_TEXTURE_2D, wave->height_maps[cur_frame]);
+		glUniform1i(glGetUniformLocation(this->tiles_shader->Program, "water"), 3);
+
+		glUniform1i(glGetUniformLocation(this->tiles_shader->Program, "is_height_map"), 1);
+	}
+	else if (tw->waveBrowser->value() == WaveType::Simulation) {
+		water->textureA.bind(2);
+	}
+
+	glUniform1i(glGetUniformLocation(this->tiles_shader->Program, "water"), 2);
+
+
 	tiles_cube_mesh->simpleDraw(*this->tiles_shader);
 
 	glDisable(GL_CULL_FACE);
@@ -499,6 +507,9 @@ void WaterView::drawWater(glm::mat4 V, glm::mat4 P) {
 	else if (tw->waveBrowser->value() == WaveType::HeightMap) {
 		this->shader = this->height_map_shader;
 	}
+	else if (tw->waveBrowser->value() == WaveType::Simulation) {
+		this->shader = this->water_shader;
+	}
 	this->shader->Use();
 
 
@@ -563,18 +574,30 @@ void WaterView::drawWater(glm::mat4 V, glm::mat4 P) {
 
 	if (tw->waveBrowser->value() == WaveType::SineWave) {
 		// sinewave attr
+		wave->simpleDraw(*this->shader);
 	}
 	else if (tw->waveBrowser->value() == WaveType::HeightMap) {
+
+		glActiveTexture(GL_TEXTURE0 + 3);
+		glUniform1i(glGetUniformLocation(this->shader->Program, "height_map"), 3);
+		glBindTexture(GL_TEXTURE_2D, wave->height_maps[cur_frame]);
+
+		wave->simpleDraw(*this->shader);
+
+
+		//wave->Draw(*this->shader, WaveType(tw->waveBrowser->value()), this->cur_frame);
+	}
+	else if (tw->waveBrowser->value() == WaveType::Simulation) {
 		//glActiveTexture(GL_TEXTURE0 + 3);
 		//glUniform1i(glGetUniformLocation(this->shader->Program, "water"), 3);
 		//glBindTexture(GL_TEXTURE_2D, wave->height_maps[cur_frame]);
 
-
-		glActiveTexture(GL_TEXTURE0 + 3);
-		glBindTexture(GL_TEXTURE_2D, water->textureA.id);
+		water->textureA.bind(3);
 		glUniform1i(glGetUniformLocation(this->shader->Program, "water"), 3);
+
+
+		waterMesh->simpleDraw(*this->shader);
 	}
-	wave->simpleDraw(*this->shader);
 
 	cur_frame += 1;
 	cur_frame %= frame_size;
@@ -587,19 +610,13 @@ void WaterView::drawWater(glm::mat4 V, glm::mat4 P) {
 
 
 
-	water->textureA.bind(0);
-	this->simple_shader->Use();
-	glUniform1i(glGetUniformLocation(this->simple_shader->Program, "water"), 0);
-	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "M"), 1, GL_FALSE, &wave_model[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "V"), 1, GL_FALSE, &V[0][0]);
-	glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "P"), 1, GL_FALSE, &P[0][0]);
-	water->plane.simpleDraw(*this->simple_shader);
-
-	//water->dropShader->Use();
-	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "M"), 1, GL_FALSE, &wave_model[0][0]);
-	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "V"), 1, GL_FALSE, &V[0][0]);
-	//glUniformMatrix4fv(glGetUniformLocation(water->dropShader->Program, "P"), 1, GL_FALSE, &P[0][0]);
-	//water->plane.simpleDraw(*water->dropShader);
+	//water->textureA.bind(0);
+	//this->simple_shader->Use();
+	//glUniform1i(glGetUniformLocation(this->simple_shader->Program, "water"), 0);
+	//glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "M"), 1, GL_FALSE, &wave_model[0][0]);
+	//glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "V"), 1, GL_FALSE, &V[0][0]);
+	//glUniformMatrix4fv(glGetUniformLocation(this->simple_shader->Program, "P"), 1, GL_FALSE, &P[0][0]);
+	//water->plane->simpleDraw(*this->simple_shader);
 
 }
 
@@ -717,27 +734,27 @@ void WaterView::realDraw()
 {
 	updateCommon();
 	// Prepare common matrix
-	glm::mat4 projection;
-	glm::mat4 view;
-	glGetFloatv(GL_PROJECTION_MATRIX, &projection[0][0]);
-	glGetFloatv(GL_MODELVIEW_MATRIX, &view[0][0]);
+	glm::mat4 P;
+	glm::mat4 V;
+	glGetFloatv(GL_PROJECTION_MATRIX, &P[0][0]);
+	glGetFloatv(GL_MODELVIEW_MATRIX, &V[0][0]);
 	// Draw skybox
 	// remove translation
-	glm::mat4 skybox_view = glm::mat4(glm::mat3(view));
+	glm::mat4 skybox_view = glm::mat4(glm::mat3(V));
 	drawSkybox(
 		skybox_view,
-		projection
+		P
 	);
 
 	// Draw tiles
 	drawTiles(
-		view,
-		projection
+		V,
+		P
 	);
 
 	drawWater(
-		view,
-		projection
+		V,
+		P
 	);
 
 	//unbind shader(switch to fixed pipeline)
@@ -779,7 +796,7 @@ void WaterView::draw() {
 
 		if (!is_init) {
 			is_init = true;
-			
+
 			// During init, enable debug output
 			glEnable(GL_DEBUG_OUTPUT);
 			glDebugMessageCallback(MessageCallback, 0);
@@ -797,9 +814,14 @@ void WaterView::draw() {
 					PROJECT_DIR "/src/shaders/sinewave.frag");
 			this->height_map_shader = new
 				Shader(
-					PROJECT_DIR "/src/shaders/water.vert",
+					PROJECT_DIR "/src/shaders/height_map.vert",
 					nullptr, nullptr, nullptr,
 					PROJECT_DIR "/src/shaders/sinewave.frag");
+			this->water_shader = new
+				Shader(
+					PROJECT_DIR "/src/shaders/water.vert",
+					nullptr, nullptr, nullptr,
+					PROJECT_DIR "/src/shaders/water.frag");
 		}
 
 
@@ -846,6 +868,8 @@ void WaterView::draw() {
 			if (!water->textureA.canDrawTo() || !water->textureB.canDrawTo()) {
 				throw exception("Rendering to floating-point textures is required but not supported");
 			}
+
+			this->waterMesh = Mesh::plane(200);
 		}
 	}
 	else
@@ -906,8 +930,8 @@ setProjection()
 #ifdef EXAMPLE_SOLUTION
 		trainCamView(this, aspect);
 #endif
-}
-}
+	}
+	}
 
 //************************************************************************
 //
@@ -957,7 +981,7 @@ void WaterView::drawStuff(bool doingShadows)
 	if (!tw->trainCam->value())
 		drawTrain(this, doingShadows);
 #endif
-}
+	}
 
 // 
 //************************************************************************

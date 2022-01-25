@@ -33,6 +33,7 @@
 // Preclarify for preventing the compiler error
 class TrainWindow;
 class Water;
+class Mesh;
 class CTrack;
 
 
@@ -106,10 +107,12 @@ public:
 	CTrack* m_pTrack;		// The track of the entire scene
 
 	Water* water = nullptr;
+	Mesh* waterMesh;
 	Shader* shader = nullptr;
 	Shader* simple_shader = nullptr;
 	Shader* sinewave_shader = nullptr;
 	Shader* height_map_shader = nullptr;
+	Shader* water_shader = nullptr;
 	Shader* skybox_shader = nullptr;
 	Shader* tiles_shader = nullptr;
 	unsigned int skybox_texture_id;

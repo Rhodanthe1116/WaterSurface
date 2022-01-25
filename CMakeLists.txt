@@ -22,7 +22,9 @@ set(SRC_SHADER
     ${SRC_DIR}shaders/drop.frag
     ${SRC_DIR}shaders/update.frag
     ${SRC_DIR}shaders/normal.frag
+
     ${SRC_DIR}shaders/water.vert
+    ${SRC_DIR}shaders/water.frag
 )
 
 set(SRC_RENDER_UTILITIES

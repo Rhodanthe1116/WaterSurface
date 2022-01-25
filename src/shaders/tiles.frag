@@ -9,7 +9,9 @@ out vec4 color;
 
 uniform samplerCube tiles_cube;
 uniform sampler2D causticTex;
+uniform sampler2D water;
 uniform vec3 LightPosition_worldspace;
+uniform int is_height_map;
 
 
 const vec3 underwaterColor = vec3(0.4, 0.9, 1.0);
@@ -79,10 +81,13 @@ vec3 getWallColor(vec3 point) {
 void main()
 {
     color = vec4(getWallColor(f_in.Position_worldspace), 1.0);
-    //vec4 info = texture(water, position.xz * 0.5 + 0.5);
-    vec4 info = texture(causticTex, f_in.Position_worldspace.xz * 0.5 + 0.5);
-    // if (position.y < info.r) {
-    if (f_in.Position_worldspace.y < get_height()) {
+    vec4 info = texture(water, f_in.Position_worldspace.xz * 0.5 + 0.5);
+    //vec4 info = texture(causticTex, f_in.Position_worldspace.xz * 0.5 + 0.5);
+    if (is_height_map == 1) {
+        info.r = (info.r- HEIGHT_MAP_Y_OFFSET) * AMPLITUDE * AMPLITUDE_BASE;
+    }
+    if (f_in.Position_worldspace.y < info.r) {
+    //if (f_in.Position_worldspace.y < get_height()) {
         color.rgb *= underwaterColor * 1.2;
     }
 }

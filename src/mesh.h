@@ -25,6 +25,10 @@ public:
 	unsigned int VAO;
 
 	// constructor
+	Mesh()
+	{
+	}
+
 	Mesh(vector<Vertex> vertices, vector<unsigned int> indices, vector<Texture> textures)
 	{
 		this->vertices = vertices;
@@ -35,7 +39,7 @@ public:
 		setupMesh();
 	}
 
-	static Mesh plane() {
+	static Mesh* plane(int detail = 1) {
 		//options = options || {};
 		vector<Vertex> vertices;
 		vector<unsigned int> indices;
@@ -43,8 +47,8 @@ public:
 		//Mesh mesh = new Mesh(options);
 		// detailX = options.detailX || options.detail || 1;
 		// detailY = options.detailY || options.detail || 1;
-		int detailX = 1;
-		int detailY = 1;
+		int detailX = detail;
+		int detailY = detail;
 
 		for (unsigned int y = 0; y <= detailY; y++) {
 			auto t = double(y) / double(detailY);
@@ -62,8 +66,8 @@ public:
 				}
 			}
 		}
-
-		return Mesh{ vertices , indices , textures };
+		Mesh* m = new Mesh{ vertices , indices , textures };
+		return m;
 	}
 
 	// render the mesh

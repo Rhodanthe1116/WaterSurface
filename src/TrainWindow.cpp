@@ -109,6 +109,7 @@ TrainWindow(const int x, const int y)
 		waveBrowser->callback((Fl_Callback*)damageCB, this);
 		waveBrowser->add("Sine Wave");
 		waveBrowser->add("Height Map");
+		waveBrowser->add("Simulation");
 		waveBrowser->select(WaveType::SineWave);
 
 		pty += 110;
